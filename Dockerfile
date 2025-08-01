@@ -14,4 +14,4 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 80
 
-CMD ["python", "-m", "flask", "run"]
+CMD ["python", "run"]
