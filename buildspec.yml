@@ -1,23 +1,41 @@
 version: 0.2
 
+env:
+  variables:
+    AWS_REGION: ap-southeast-1       # Set your AWS region here
+    AWS_ACCOUNT_ID: 336938263666     # Your AWS account ID
+    ECR_REPO_NAME: xavierlee16/microservice-ci-cd-repo  # Your ECR repo name
+
 phases:
   pre_build:
     commands:
-      # Log in to Amazon ECR using the AWS CLI
+      - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-      # Retrieve the Git tag associated with the current commit
-      - GIT_TAG=$(git describe --tags --exact-match || echo "latest")
+      - echo Retrieving Git tag...
+      # Attempt to get the exact matching Git tag; fallback to "latest" if none found or if running in CodeBuild without Git metadata
+      - |
+        if git describe --tags --exact-match > /dev/null 2>&1; then
+          GIT_TAG=$(git describe --tags --exact-match)
+        else
+          GIT_TAG="latest"
+        fi
+      - echo Using Git tag: $GIT_TAG
+
   build:
     commands:
-      # Build the Docker image using the provided Dockerfile and tag it with "latest"
+      - echo Building Docker image tagged as latest...
       - docker build -t $ECR_REPO_NAME:latest .
+
   post_build:
     commands:
-      # Tag the Docker image with ECR repository URL for the Git tag
+      - echo Tagging Docker images...
       - docker tag $ECR_REPO_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$GIT_TAG
-      # Tag the Docker image with ECR repository URL for "latest"
       - docker tag $ECR_REPO_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:latest
-      # Push the Docker image with the Git tag to Amazon ECR
+      - echo Pushing Docker images to ECR...
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$GIT_TAG
-      # Push the Docker image with "latest" tag to Amazon ECR
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:latest
+
+artifacts:
+  files:
+    - '**/*'
+

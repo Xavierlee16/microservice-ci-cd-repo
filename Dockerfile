@@ -14,4 +14,4 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 80
 
-CMD ["python", "run"]
+ENTRYPOINT ["python3", "app.py"]
